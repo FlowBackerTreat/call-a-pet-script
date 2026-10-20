@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call A Pet Script — Summon & Command In-Game Pets</title>
+<meta name="description" content="Call A Pet Script: summon, control, and command pets in-game with hotkeys, pet spawner, follow/stay AI toggles, and a chat-triggered call command.">
+<style>
+  :root{
+    --bg-0:#070a17;
+    --bg-1:#0b1024;
+    --bg-2:#111634;
+    --ink:#e8ecf8;
+    --muted:#9aa4c4;
+    --line:rgba(140,155,220,.16);
+    --accent:#7c9cff;
+    --accent-2:#b06bff;
+    --accent-3:#4fd1c5;
+    --glass:rgba(18,24,52,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 12% -8%, rgba(124,156,255,.20), transparent 60%),
+      radial-gradient(1000px 600px at 92% 0%, rgba(176,107,255,.16), transparent 55%),
+      radial-gradient(900px 700px at 50% 110%, rgba(79,209,197,.10), transparent 60%),
+      linear-gradient(160deg,#070a17 0%,#0b1024 42%,#0d1230 68%,#080b1c 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{width:min(1120px,92vw);margin-inline:auto}
+
+  /* ---------- NAV ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:100;
+    backdrop-filter:blur(18px) saturate(150%);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    background:var(--glass);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:20px;padding:14px 0;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px;font-size:1.02rem}
+  .brand .logo{
+    width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    box-shadow:0 6px 20px rgba(124,156,255,.35);
+    font-size:1rem;
+  }
+  .brand span.grad{
+    background:linear-gradient(90deg,#cfe0ff,#b9a3ff 60%,#8fe6dd);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  nav.links{display:flex;gap:28px;font-size:.92rem;color:var(--muted)}
+  nav.links a{position:relative;transition:color .2s}
+  nav.links a:hover{color:#fff}
+  nav.links a::after{
+    content:"";position:absolute;left:0;bottom:-6px;height:2px;width:0;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    transition:width .25s;border-radius:2px;
+  }
+  nav.links a:hover::after{width:100%}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    font-weight:700;font-size:.92rem;border-radius:12px;
+    padding:11px 20px;cursor:pointer;border:1px solid transparent;
+    transition:transform .18s, box-shadow .25s, background .25s, border-color .25s;
+    white-space:nowrap;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,#6f8dff,#a35bff);
+    color:#fff;
+    box-shadow:0 10px 26px -8px rgba(124,156,255,.65);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 34px -8px rgba(150,120,255,.8)}
+  .btn-ghost{
+    background:rgba(255,255,255,.04);
+    border-color:var(--line);
+    color:#dbe3ff;
+  }
+  .btn-ghost:hover{background:rgba(255,255,255,.09);transform:translateY(-2px);border-color:rgba(160,175,240,.4)}
+  .nav .btn{padding:9px 17px;font-size:.86rem}
+
+  /* ---------- HERO ---------- */
+  .hero{padding:82px 0 64px;text-align:center;position:relative}
+  .pill{
+    display:inline-flex;align-items:center;gap:9px;
+    padding:7px 16px;border-radius:999px;font-size:.8rem;font-weight:600;
+    letter-spacing:.4px;text-transform:uppercase;color:#c3d2ff;
+    background:rgba(124,156,255,.09);
+    border:1px solid rgba(124,156,255,.28);
+    box-shadow:inset 0 0 22px rgba(124,156,255,.09);
+  }
+  .pill .dot{
+    width:7px;height:7px;border-radius:50%;background:var(--accent-3);
+    box-shadow:0 0 0 3px rgba(79,209,197,.18);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  h1{
+    margin:26px auto 0;max-width:900px;
+    font-size:clamp(2.15rem,5.4vw,4rem);
+    line-height:1.1;font-weight:800;letter-spacing:-1.4px;
+    background:linear-gradient(100deg,#ffffff 0%,#c9d8ff 32%,#a98bff 62%,#7ff0e2 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p.lead{
+    max-width:660px;margin:22px auto 0;color:var(--muted);font-size:1.06rem;
+  }
+  .hero-actions{
+    display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:34px;
+  }
+  .hero-actions .btn{padding:14px 28px;font-size:.98rem;border-radius:13px}
+
+  .stats{
+    display:flex;flex-wrap:wrap;gap:12px;justify-content:center;
+    margin-top:44px;
+  }
+  .stat{
+    display:flex;flex-direction:column;gap:2px;
+    padding:12px 22px;border-radius:13px;
+    background:rgba(255,255,255,.035);
+    border:1px solid var(--line);
+    backdrop-filter:blur(8px);
+    min-width:132px;
+  }
+  .stat b{font-size:.95rem;color:#fff;letter-spacing:.2px}
+  .stat small{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+
+  /* ---------- SECTION ---------- */
+  section{padding:72px 0}
+  .sec-head{text-align:center;max-width:640px;margin:0 auto 46px}
+  .sec-head .kicker{
+    font-size:.78rem;font-weight:700;letter-spacing:2.2px;text-transform:uppercase;
+    color:var(--accent);
+  }
+  .sec-head h2{
+    margin-top:10px;font-size:clamp(1.6rem,3.4vw,2.4rem);
+    font-weight:800;letter-spacing:-.7px;color:#fff;
+  }
+  .sec-head p{margin-top:12px;color:var(--muted);font-size:.98rem}
+
+  /* ---------- FEATURES ---------- */
+  .grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+  }
+  .card{
+    position:relative;overflow:hidden;
+    padding:26px 24px 24px;
+    border-radius:16px;
+    background:linear-gradient(180deg,rgba(24,31,64,.72),rgba(14,19,42,.72));
+    border:1px solid var(--line);
+    transition:transform .22s ease, box-shadow .28s ease, border-color .28s;
+  }
+  .card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2),var(--accent-3));
+    opacity:.85;
+  }
+  .card:hover{
+    transform:translateY(-7px);
+    border-color:rgba(150,170,255,.38);
+    box-shadow:0 26px 48px -22px rgba(90,110,255,.6);
+  }
+  .card .ico{
+    width:46px;height:46px;border-radius:12px;display:grid;place-items:center;
+    font-size:1.35rem;margin-bottom:16px;
+    background:rgba(124,156,255,.10);
+    border:1px solid rgba(124,156,255,.22);
+  }
+  .card h3{font-size:1.03rem;font-weight:700;color:#fff;margin-bottom:7px;letter-spacing:.1px}
+  .card p{font-size:.89rem;color:var(--muted);line-height:1.62}
+
+  /* ---------- HOW IT WORKS ---------- */
+  .steps{position:relative;max-width:760px;margin:0 auto;padding-left:8px}
+  .steps::before{
+    content:"";position:absolute;left:31px;top:14px;bottom:14px;width:2px;
+    background:linear-gradient(180deg,var(--accent),var(--accent-2) 55%,transparent);
+    border-radius:2px;
+  }
+  .step{position:relative;display:flex;gap:24px;padding:0 0 40px 0}
+  .step:last-child{padding-bottom:0}
+  .step .num{
+    flex:0 0 48px;height:48px;border-radius:14px;display:grid;place-items:center;
+    font-weight:800;font-size:1.05rem;color:#fff;
+    background:linear-gradient(135deg,#5f7dff,#a25bff);
+    box-shadow:0 12px 26px -12px rgba(124,156,255,.85);
+    z-index:1;
+  }
+  .step .body{padding-top:2px}
+  .step h3{font-size:1.06rem;font-weight:700;color:#fff;margin-bottom:5px}
+  .step p{font-size:.92rem;color:var(--muted);max-width:560px}
+
+  /* ---------- FAQ ---------- */
+  .faq{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+  details{
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:rgba(20,26,54,.6);
+    overflow:hidden;
+    transition:border-color .25s, background .25s;
+  }
+  details[open]{border-color:rgba(150,170,255,.36);background:rgba(26,33,68,.72)}
+  summary{
+    list-style:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:18px 22px;
+    font-weight:650;font-size:.97rem;color:#e9eeff;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary .plus{
+    flex:0 0 auto;font-size:1.35rem;font-weight:400;line-height:1;color:var(--accent);
+    transition:transform .28s ease, color .25s;
+  }
+  details[open] summary .plus{transform:rotate(45deg);color:var(--accent-3)}
+  details .ans{
+    padding:0 22px 20px;color:var(--muted);font-size:.9rem;line-height:1.65;
+    max-width:94%;
+  }
+
+  /* ---------- CTA BANNER ---------- */
+  .cta-wrap{padding:36px 0 84px}
+  .cta{
+    position:relative;overflow:hidden;text-align:center;
+    padding:58px 30px;
+    border-radius:24px;
+    border:1px solid rgba(150,170,255,.28);
+    background:linear-gradient(180deg,rgba(30,38,80,.85),rgba(14,19,42,.9));
+    box-shadow:0 40px 90px -50px rgba(120,110,255,.9);
+  }
+  .cta::before{
+    content:"";position:absolute;inset:auto 0 -40% 0;height:120%;
+    background:radial-gradient(600px 320px at 50% 100%,rgba(124,156,255,.35),transparent 70%);
+    pointer-events:none;
+  }
+  .cta::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(420px 220px at 50% -20%,rgba(176,107,255,.28),transparent 70%);
+    pointer-events:none;
+  }
+  .cta h2{
+    position:relative;z-index:1;
+    font-size:clamp(1.6rem,3.6vw,2.5rem);font-weight:800;letter-spacing:-.8px;color:#fff;
+  }
+  .cta p{
+    position:relative;z-index:1;margin:14px auto 0;max-width:540px;
+    color:var(--muted);font-size:1rem;
+  }
+  .cta .btn{position:relative;z-index:1;margin-top:28px;padding:15px 34px;font-size:1rem}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--line);
+    background:rgba(8,11,26,.6);
+    padding:30px 0;
+  }
+  .foot-inner{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-size:.85rem;color:var(--muted);
+  }
+  .foot-inner a{color:#c3d2ff;transition:color .2s}
+  .foot-inner a:hover{color:#fff}
+  .foot-links{display:flex;gap:22px}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:960px){
+    .grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:640px){
+    nav.links{display:none}
+    .hero{padding:60px 0 48px}
+    .grid{grid-template-columns:1fr}
+    .stats{gap:10px}
+    .stat{flex:1 1 40%;min-width:0;padding:11px 14px}
+    .step{gap:16px}
+    .steps::before{left:23px}
+    .step .num{flex:0 0 40px;height:40px;border-radius:12px;font-size:.95rem}
+    .hero-actions .btn{width:100%}
+    .foot-inner{flex-direction:column;text-align:center}
+    .cta{padding:44px 20px}
+    section{padding:56px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="logo">🐾</span>
+      <span>Call A Pet <span class="grad">Script</span></span>
+    </a>
+    <nav class="links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-primary" href="https://gitscore.cc">Download</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <span class="pill"><span class="dot"></span> Call A Pet Script</span>
+      <h1>Summon, control, and command your in-game pets instantly.</h1>
+      <p class="lead">
+        A lightweight Windows utility for the Call A Pet Script. Bind hotkeys, spawn pets on demand,
+        toggle follow/stay AI behavior, and call any pet with a single chat command — no menus, no delays.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://gitscore.cc">⬇ Download for Windows</a>
+        <a class="btn btn-ghost" href="https://gitscore.cc">★ View on GitHub</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>48,300+</b><small>Downloads</small></div>
+        <div class="stat"><b>v2.4.1</b><small>Latest version</small></div>
+        <div class="stat"><b>Windows 10 / 11</b><small>Platform</small></div>
+        <div class="stat"><b>Free &amp; open source</b><small>License</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="kicker">Features</div>
+        <h2>Everything you need to command your pets</h2>
+        <p>Built for speed and precision — each feature is one keypress or one chat message away.</p>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <div class="ico">⌨️</div>
+          <h3>Hotkey Summoning</h3>
+          <p>Bind any pet in your roster to a single hotkey. Press once and your companion appears beside you — no inventory scrolling required.</p>
+        </article>
+        <article class="card">
+          <div class="ico">🐕</div>
+          <h3>Pet Spawner</h3>
+          <p>Spawn pets directly from the script panel. Choose from your collected list, set a default companion, and re-summon after every respawn.</p>
+        </article>
+        <article class="card">
+          <div class="ico">🔄</div>
+          <h3>Follow / Stay AI Toggles</h3>
+          <p>Switch pet behavior on the fly. Toggle Follow mode to keep them close, or Stay mode to park them at a location while you explore.</p>
+        </article>
+        <article class="card">
+          <div class="ico">💬</div>
+          <h3>Chat-Triggered Call</h3>
+          <p>Type a simple call command in chat and your pet comes running. Fully configurable trigger phrase with a cooldown to prevent spam.</p>
+        </article>
+        <article class="card">
+          <div class="ico">⚡</div>
+          <h3>Instant Response</h3>
+          <p>Low-overhead execution keeps input latency near zero, so summons and behavior toggles register the moment you press the key.</p>
+        </article>
+        <article class="card">
+          <div class="ico">🛡️</div>
+          <h3>Safe &amp; Open Source</h3>
+          <p>No obfuscation, no hidden payloads. The full source is published so you can audit every line before running it on your machine.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="kicker">How it works</div>
+        <h2>Up and running in under two minutes</h2>
+        <p>No installers, no dependencies — just download, configure your keys, and play.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="num">1</div>
+          <div class="body">
+            <h3>Download and extract</h3>
+            <p>Grab the latest build from the download page, unzip it to any folder, and run the executable. No system-wide installation is needed.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <div class="body">
+            <h3>Bind your hotkeys</h3>
+            <p>Open the control panel and assign keys for summon, spawn, follow, and stay. Set your chat call phrase and cooldown in the same window.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div class="body">
+            <h3>Summon and command</h3>
+            <p>Launch your game, press your summon key, and your pet appears. Use the toggles to switch behavior or type the call command in chat.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="kicker">FAQ</div>
+        <h2>Common questions</h2>
+        <p>Quick answers about compatibility, safety, and configuration.</p>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>Which Windows versions are supported? <span class="plus">+</span></summary>
+          <div class="ans">Call A Pet Script runs on Windows 10 and Windows 11 (64-bit). It needs no external runtime — the executable is self-contained, so there is nothing else to install.</div>
+        </details>
+        <details>
+          <summary>Is the script free and open source? <span class="plus">+</span></summary>
+          <div class="ans">Yes. The project is completely free and the full source code is publicly available on GitHub. You can read, audit, and modify every part of it, and there are no premium tiers or locked features.</div>
+        </details>
+        <details>
+          <summary>How does the chat-triggered call command work? <span class="plus">+</span></summary>
+          <div class="ans">You define a trigger phrase in the settings panel. When that phrase appears in chat, the script summons your active pet to your position. A configurable cooldown prevents accidental or repeated triggers during fast typing.</div>
+        </details>
+        <details>
+          <summary>Can I change the hotkeys after setting them up? <span class="plus">+</span></summary>
+          <div class="ans">Absolutely. Every hotkey is rebindable at any time from the control panel. You can also clear a binding entirely if you prefer to summon pets using only the chat command.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BANNER -->
+  <div class="cta-wrap">
+    <div class="wrap">
+      <div class="cta">
+        <h2>Ready to call your pet with one keypress?</h2>
+        <p>Download Call A Pet Script for Windows and take full control of summoning, spawning, and pet AI behavior.</p>
+        <a class="btn btn-primary" href="https://gitscore.cc">⬇ Download Call A Pet Script</a>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div>© 2025 Call A Pet Script. All rights reserved.</div>
+    <div class="foot-links">
+      <a href="https://gitscore.cc">GitHub</a>
+      <a href="https://gitscore.cc">Download</a>
+      <a href="#faq">Support</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
